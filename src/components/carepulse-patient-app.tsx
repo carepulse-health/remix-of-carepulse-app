@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { requestPatientAccountLink, usePatientSession, type PatientRecordState } from "@/hooks/use-patient-session";
 import { useDoctorDirectory } from "@/hooks/use-doctor-directory";
@@ -34,6 +34,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 type View = "home" | "doctors" | "appointments" | "assistant" | "notifications" | "account";
 type AccountView = "login" | "register" | "forgot";
@@ -56,8 +57,8 @@ const heading: Record<Exclude<View, "account">, { title: string; eyebrow: string
 
 function SectionTitle({ title, detail, action }: { title: string; detail?: string; action?: React.ReactNode }) {
   return (
-    <div className="mb-4 flex items-end justify-between gap-3">
-      <div>
+    <div className="mb-4 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+      <div className="min-w-0">
         <h2 className="font-display text-lg font-semibold tracking-tight text-care-ink">{title}</h2>
         {detail && <p className="mt-1 text-sm text-muted-foreground">{detail}</p>}
       </div>
@@ -102,7 +103,7 @@ function DirectoryMessage({ status, message, signedIn, onLink }: { status: "disa
 function DoctorRow({ doctor, tone, scheduleText, onBook }: { doctor: { id: string | null; full_name: string | null; specialization: string | null }; tone: string; scheduleText: string; onBook: () => void }) {
   return (
     <div className="flex items-center gap-3 border-b border-care-line/70 py-3 last:border-b-0 last:pb-0">
-      <Avatar className={`size-11 rounded-md ${tone}`}>
+      <Avatar className={`size-11 shrink-0 rounded-md ${tone}`}>
         <AvatarFallback className={`${tone} rounded-md text-xs font-semibold`}>{doctorInitials(doctor.full_name)}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
@@ -135,13 +136,21 @@ export function CarePulsePatientApp() {
   const selectedDoctor = availableDoctors.find((doctor) => doctor.id === chosenDoctor);
   const selectedSchedules = directory.status === "ready" ? directory.schedules.filter((schedule) => schedule.doctor_id === chosenDoctor && schedule.is_available) : [];
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0 });
+  };
+
   const go = (view: View) => {
+    if (view !== activeView) scrollToTop();
     setActiveView(view);
     setMenuOpen(false);
     if (view === "home") setChosenDoctor(null);
   };
 
   const bookDoctor = (doctorId?: string | null) => {
+    scrollToTop();
     setActiveView("doctors");
     setChosenDoctor(doctorId ?? null);
   };
@@ -153,19 +162,19 @@ export function CarePulsePatientApp() {
   const current = activeView === "account" ? null : heading[activeView];
 
   return (
-    <div className="min-h-screen bg-care-paper text-care-ink">
+    <div className="min-h-screen overflow-x-clip bg-care-paper text-care-ink lg:flex lg:h-screen lg:flex-col">
       {bannerOpen && (
-        <div className="flex min-h-8 items-center justify-center gap-2 bg-care-deep px-10 py-1.5 text-center text-[11px] font-medium text-primary-foreground">
+        <div className="relative flex min-h-8 items-center justify-center gap-2 bg-care-deep py-1.5 pl-4 pr-12 text-center text-[11px] font-medium text-primary-foreground sm:px-12">
           <span className="size-1.5 shrink-0 rounded-full bg-care-amber" />
           Preview content is sample-only · Sign in to view your clinic directory
-          <Button variant="ghost" size="icon" aria-label="Dismiss preview notice" onClick={() => setBannerOpen(false)} className="absolute right-2 h-6 w-6 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+          <Button variant="ghost" size="icon" aria-label="Dismiss preview notice" onClick={() => setBannerOpen(false)} className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 text-primary-foreground touch:size-10 hover:bg-primary-foreground/10 hover:text-primary-foreground">
             <X className="size-3" />
           </Button>
         </div>
       )}
 
-      <div className="mx-auto flex min-h-[calc(100vh-32px)] max-w-[1440px]">
-        <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col border-r border-care-line/80 bg-background px-5 py-6 lg:flex">
+      <div className="mx-auto flex w-full min-h-[calc(100vh-32px)] max-w-[1440px] lg:min-h-0 lg:flex-1">
+        <aside className="hidden w-[232px] shrink-0 flex-col overflow-y-auto border-r border-care-line/80 bg-background px-5 py-6 lg:flex">
           <button className="flex items-center gap-2.5 text-left" onClick={() => go("home")} aria-label="CarePulse overview">
             <span className="grid size-9 place-items-center rounded-md bg-care-deep text-primary-foreground"><HeartPulse className="size-5" /></span>
             <span className="font-display text-[20px] font-bold tracking-tight text-care-deep">carepulse<span className="text-care-teal">.</span></span>
@@ -181,7 +190,7 @@ export function CarePulsePatientApp() {
             ))}
           </nav>
           <div className="mt-auto border-t border-care-line pt-4">
-            <Button variant="ghost" onClick={() => go("account")} className="h-auto w-full justify-start gap-3 rounded-md px-2 py-2 text-left">
+            <Button variant="ghost" onClick={() => go("account")} className="h-auto w-full justify-start gap-3 rounded-md px-2 py-2 text-left touch:h-auto">
               <Avatar className="size-9 rounded-md bg-care-panel"><AvatarFallback className="rounded-md bg-care-panel text-xs font-semibold text-care-deep">PA</AvatarFallback></Avatar>
               <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-care-ink">Patient account</span><span className="block truncate text-xs text-muted-foreground">{session?.user.email ?? "Sign in"}</span></span>
               <ChevronRight className="size-4 text-muted-foreground" />
@@ -189,25 +198,43 @@ export function CarePulsePatientApp() {
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-care-line/80 bg-background/95 px-4 backdrop-blur md:px-8 lg:px-10">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setMenuOpen((open) => !open)} className="lg:hidden"><Menu className="size-5" /></Button>
-              <button onClick={() => go("home")} className="font-display text-[19px] font-bold tracking-tight text-care-deep lg:hidden">carepulse<span className="text-care-teal">.</span></button>
-              <span className="hidden text-sm text-muted-foreground sm:block">Patient care</span>
+        <div ref={scrollRef} className="min-w-0 flex-1 pb-[calc(72px+env(safe-area-inset-bottom))] lg:overflow-y-auto lg:pb-0">
+          <header className="sticky top-0 z-20 flex h-[64px] items-center justify-between gap-2 border-b border-care-line/80 bg-background/95 px-2 backdrop-blur sm:h-[68px] sm:px-4 md:px-8 lg:px-10">
+            <div className="flex min-w-0 items-center gap-1 sm:gap-3">
+              <Button variant="ghost" size="icon" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)} className="shrink-0 lg:hidden"><Menu className="size-5" /></Button>
+              <button onClick={() => go("home")} className="truncate px-1 py-2 font-display text-[19px] font-bold tracking-tight text-care-deep lg:hidden">carepulse<span className="text-care-teal">.</span></button>
+              <span className="hidden text-sm text-muted-foreground md:block">Patient care</span>
             </div>
-            <div className="flex items-center gap-2.5">
-              <SampleLabel liveDirectory={activeView === "doctors" && directory.status === "ready"} />
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+              <span className="hidden sm:inline-flex"><SampleLabel liveDirectory={activeView === "doctors" && directory.status === "ready"} /></span>
               <Button variant="ghost" size="icon" aria-label="View notifications" onClick={() => go("notifications")} className="relative"><Bell className="size-[18px]" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-care-teal ring-2 ring-background" /></Button>
-              <Button variant="ghost" onClick={() => go("account")} aria-label="Patient account" className="size-9 rounded-md p-0"><Avatar className="size-8 rounded-md bg-care-panel"><AvatarFallback className="rounded-md bg-care-panel text-xs font-semibold text-care-deep">PA</AvatarFallback></Avatar></Button>
+              <Button variant="ghost" onClick={() => go("account")} aria-label="Patient account" className="size-9 rounded-md p-0 touch:size-11"><Avatar className="size-8 rounded-md bg-care-panel"><AvatarFallback className="rounded-md bg-care-panel text-xs font-semibold text-care-deep">PA</AvatarFallback></Avatar></Button>
             </div>
           </header>
 
-          {menuOpen && <nav aria-label="Mobile navigation" className="absolute inset-x-0 z-30 space-y-1 border-b border-care-line bg-background p-3 shadow-md lg:hidden">{navigation.map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" onClick={() => go(id)} className="w-full justify-start gap-3"><Icon className="size-4" />{label}</Button>)}</nav>}
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetContent side="left" className="flex w-[min(86vw,320px)] flex-col gap-0 border-care-line bg-background p-0 lg:hidden">
+              <SheetHeader className="border-b border-care-line px-5 py-5 text-left">
+                <SheetTitle className="flex items-center gap-2.5"><span className="grid size-9 place-items-center rounded-md bg-care-deep text-primary-foreground"><HeartPulse className="size-5" /></span><span className="font-display text-[20px] font-bold tracking-tight text-care-deep">carepulse<span className="text-care-teal">.</span></span></SheetTitle>
+                <SheetDescription className="text-xs">Patient care</SheetDescription>
+              </SheetHeader>
+              <nav aria-label="Mobile navigation" className="flex-1 space-y-1 overflow-y-auto p-3">
+                <p className="mb-2 px-3 text-[10px] font-semibold text-muted-foreground">YOUR SPACE</p>
+                {navigation.map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" onClick={() => go(id)} aria-current={activeView === id ? "page" : undefined} className={`h-12 w-full justify-start touch:h-12 gap-3 rounded-md px-3 text-sm font-medium ${activeView === id ? "bg-care-mist text-care-deep hover:bg-care-mist" : "text-muted-foreground"}`}><Icon className="size-[18px]" />{label}{id === "notifications" && <span className="ml-auto size-2 rounded-full bg-care-teal" />}</Button>)}
+              </nav>
+              <div className="border-t border-care-line p-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+                <Button variant="ghost" onClick={() => go("account")} aria-current={activeView === "account" ? "page" : undefined} className="h-auto w-full justify-start gap-3 rounded-md px-2 py-2 text-left touch:h-auto">
+                  <Avatar className="size-9 rounded-md bg-care-panel"><AvatarFallback className="rounded-md bg-care-panel text-xs font-semibold text-care-deep">PA</AvatarFallback></Avatar>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-care-ink">Patient account</span><span className="block truncate text-xs text-muted-foreground">{session?.user.email ?? "Sign in"}</span></span>
+                  <ChevronRight className="size-4 text-muted-foreground" />
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
 
-          <main className="mx-auto max-w-[1140px] px-4 pb-28 pt-7 sm:px-7 md:pb-12 md:pt-9 lg:px-10">
+          <main className="mx-auto w-full max-w-[1140px] px-4 pb-10 pt-6 sm:px-7 md:pb-12 md:pt-9 lg:px-10">
             {current && <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <div><p className="text-[10px] font-semibold text-care-teal">{current.eyebrow}</p><h1 className="mt-1 font-display text-[27px] font-semibold leading-tight tracking-tight text-care-ink sm:text-[32px]">{current.title}</h1></div>
+              <div className="min-w-0"><p className="text-[10px] font-semibold text-care-teal">{current.eyebrow}</p><h1 className="mt-1 break-words font-display text-[26px] font-semibold leading-tight tracking-tight text-care-ink sm:text-[32px]">{current.title}</h1></div>
               <Badge variant="outline" className="gap-1.5 border-care-line bg-background text-[10px] font-medium text-muted-foreground"><span className={`size-1.5 rounded-full ${activeView === "doctors" ? "bg-care-teal" : "bg-care-amber"}`} /> {activeView === "doctors" ? "CLINIC DIRECTORY" : "DEMO DATA"}</Badge>
             </div>}
 
@@ -221,7 +248,7 @@ export function CarePulsePatientApp() {
                   <p className="mt-2 max-w-[335px] text-sm leading-relaxed text-primary-foreground/80">Find a doctor, keep visits together, and take your next step at your own pace.</p>
                   <Button onClick={bookFirstListedDoctor} className="mt-5 gap-2 bg-primary-foreground text-care-deep hover:bg-primary-foreground/90">Find a doctor <ArrowRight className="size-4" /></Button>
                 </div>
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-primary-foreground/30 bg-care-deep/60 px-2.5 py-1 text-[9px] font-medium text-primary-foreground"><span className="size-1.5 rounded-full bg-care-amber" /> SAMPLE APPOINTMENT</div>
+                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-primary-foreground/30 bg-care-deep/60 px-2.5 py-1 text-[10px] font-medium text-primary-foreground"><span className="size-1.5 rounded-full bg-care-amber" /> SAMPLE APPOINTMENT</div>
               </section>
 
               <div className="grid gap-7 xl:grid-cols-[1.4fr_0.95fr]">
@@ -264,12 +291,12 @@ export function CarePulsePatientApp() {
                   <section>
                     <SectionTitle title="Care, with a little help" />
                     <button onClick={() => go("assistant")} className="group w-full overflow-hidden rounded-md border border-care-line bg-care-panel/70 p-4 text-left transition-colors hover:bg-care-panel sm:p-5">
-                      <span className="mb-4 flex items-center justify-between"><span className="grid size-10 place-items-center rounded-md bg-background text-care-teal"><MessageCircleHeart className="size-[19px]" /></span><Badge variant="outline" className="border-care-line bg-background text-[9px] text-muted-foreground">NOT CONNECTED</Badge></span>
+                      <span className="mb-4 flex items-center justify-between"><span className="grid size-10 place-items-center rounded-md bg-background text-care-teal"><MessageCircleHeart className="size-[19px]" /></span><Badge variant="outline" className="border-care-line bg-background text-[10px] text-muted-foreground">NOT CONNECTED</Badge></span>
                       <span className="block text-sm font-semibold text-care-ink">Care assistant</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">The screening guide will appear here after clinic safety rules are set.</span><span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-care-teal">More about this <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                     </button>
                   </section>
                   <section className="border-t border-care-line pt-5">
-                    <div className="mb-3 flex items-center gap-2"><Clock3 className="size-4 text-care-teal" /><h2 className="text-sm font-semibold">Clinic hours</h2><Badge variant="outline" className="ml-auto border-care-line text-[9px] text-muted-foreground">SAMPLE</Badge></div>
+                    <div className="mb-3 flex items-center gap-2"><Clock3 className="size-4 text-care-teal" /><h2 className="text-sm font-semibold">Clinic hours</h2><Badge variant="outline" className="ml-auto border-care-line text-[10px] text-muted-foreground">SAMPLE</Badge></div>
                     <p className="text-xs text-muted-foreground">Monday – Friday <span className="float-right font-medium text-care-ink">8:00 AM – 5:00 PM</span></p>
                     <p className="mt-2 text-xs text-muted-foreground">Saturday <span className="float-right font-medium text-care-ink">9:00 AM – 1:00 PM</span></p>
                   </section>
@@ -282,38 +309,40 @@ export function CarePulsePatientApp() {
                 <div><p className="text-sm text-muted-foreground">Clinicians listed in your clinic’s directory.</p><p className="mt-1 text-xs text-muted-foreground">Only available clinic schedules are shown.</p></div>
                 <label className="relative block w-full sm:max-w-[280px]"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Name or specialty" aria-label="Search doctors" className="pl-9" /></label>
               </section>
-              {chosenDoctor && <div role="status" className="flex items-start justify-between gap-3 rounded-md border border-care-line bg-care-panel/60 p-4"><div className="flex gap-3"><div className="grid size-9 place-items-center rounded-md bg-background text-care-teal"><CalendarDays className="size-4" /></div><div><p className="text-sm font-semibold">Available times{selectedDoctor?.full_name ? ` · ${selectedDoctor.full_name}` : ""}</p><p className="mt-1 text-xs text-muted-foreground">Times shown are read from the clinic schedule.</p><div className="mt-3 flex flex-wrap gap-2">{selectedSchedules.length ? selectedSchedules.map((schedule) => <Badge key={schedule.id} variant="outline" className="border-care-line bg-background font-medium text-care-deep">{scheduleLabel(schedule.day_of_week, schedule.start_time, schedule.end_time)}</Badge>) : <span className="text-xs text-muted-foreground">No available times are currently listed.</span>}</div></div></div><Button variant="ghost" size="icon" aria-label="Close doctor times" onClick={() => setChosenDoctor(null)}><X className="size-4" /></Button></div>}
+              {chosenDoctor && <div role="status" className="flex items-start justify-between gap-3 rounded-md border border-care-line bg-care-panel/60 p-4"><div className="flex min-w-0 gap-3"><div className="grid size-9 shrink-0 place-items-center rounded-md bg-background text-care-teal"><CalendarDays className="size-4" /></div><div className="min-w-0"><p className="break-words text-sm font-semibold">Available times{selectedDoctor?.full_name ? ` · ${selectedDoctor.full_name}` : ""}</p><p className="mt-1 text-xs text-muted-foreground">Times shown are read from the clinic schedule.</p><div className="mt-3 flex flex-wrap gap-2">{selectedSchedules.length ? selectedSchedules.map((schedule) => <Badge key={schedule.id} variant="outline" className="border-care-line bg-background font-medium text-care-deep">{scheduleLabel(schedule.day_of_week, schedule.start_time, schedule.end_time)}</Badge>) : <span className="text-xs text-muted-foreground">No available times are currently listed.</span>}</div></div></div><Button variant="ghost" size="icon" aria-label="Close doctor times" onClick={() => setChosenDoctor(null)} className="shrink-0"><X className="size-4" /></Button></div>}
               {directory.status === "ready" ? <div className="divide-y divide-care-line rounded-md border border-care-line bg-background px-4 sm:px-5">{filteredDoctors.length ? filteredDoctors.map((doctor, index) => {
                 const schedules = directory.schedules.filter((schedule) => schedule.doctor_id === doctor.id && schedule.is_available);
                 const tone = doctorTone(index);
-                return <article key={doctor.id} className="flex flex-wrap items-center gap-3 py-4 sm:gap-4"><Avatar className={`size-12 rounded-md ${tone}`}><AvatarFallback className={`${tone} rounded-md text-xs font-semibold`}>{doctorInitials(doctor.full_name)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{doctor.full_name ?? "Doctor"}</p><p className="mt-0.5 text-xs text-muted-foreground">{doctor.specialization ?? "Specialty not listed"}</p><p className="mt-1.5 flex items-center gap-1 text-[11px] text-care-teal"><Clock3 className="size-3" />{schedules.length ? `${schedules.length} available ${schedules.length === 1 ? "schedule" : "schedules"}` : "No available schedule listed"}</p></div><Button onClick={() => bookDoctor(doctor.id)} variant="outline" size="sm" disabled={!schedules.length} className="gap-1.5">View times <ArrowRight className="size-3.5" /></Button></article>;
+                return <article key={doctor.id} className="flex flex-wrap items-center gap-3 py-4 sm:gap-4"><Avatar className={`size-12 shrink-0 rounded-md ${tone}`}><AvatarFallback className={`${tone} rounded-md text-xs font-semibold`}>{doctorInitials(doctor.full_name)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{doctor.full_name ?? "Doctor"}</p><p className="mt-0.5 text-xs text-muted-foreground">{doctor.specialization ?? "Specialty not listed"}</p><p className="mt-1.5 flex items-center gap-1 text-[11px] text-care-teal"><Clock3 className="size-3" />{schedules.length ? `${schedules.length} available ${schedules.length === 1 ? "schedule" : "schedules"}` : "No available schedule listed"}</p></div><Button onClick={() => bookDoctor(doctor.id)} variant="outline" size="sm" disabled={!schedules.length} className="w-full gap-1.5 min-[420px]:w-auto">View times <ArrowRight className="size-3.5" /></Button></article>;
               }) : <p className="py-8 text-center text-sm text-muted-foreground">No clinic doctors match that search.</p>}</div> : <div className="rounded-md border border-care-line bg-background px-4 py-1 sm:px-5"><DirectoryMessage status={directory.status} message={directory.status === "error" ? directory.message : undefined} signedIn={Boolean(session)} onLink={() => go("account")} /></div>}
             </div>}
 
             {activeView === "appointments" && <div className="space-y-5">
-              <section className="flex flex-wrap items-center justify-between gap-3 border-b border-care-line pb-4"><p className="text-sm text-muted-foreground">Sample appointments · no booking information is stored.</p><div className="flex gap-1 rounded-md bg-muted p-1"><Button size="sm" variant={appointmentTab === "upcoming" ? "default" : "ghost"} onClick={() => setAppointmentTab("upcoming")} className="h-8 px-3 text-xs">Upcoming</Button><Button size="sm" variant={appointmentTab === "past" ? "default" : "ghost"} onClick={() => setAppointmentTab("past")} className="h-8 px-3 text-xs">Past visits</Button></div></section>
-              {record.status === "linked" ? <LiveAppointments record={record} tab={appointmentTab} /> : appointmentTab === "upcoming" ? <article className="max-w-2xl overflow-hidden rounded-md border border-care-line bg-background"><div className="flex items-center justify-between gap-2 border-b border-care-line bg-care-panel/60 px-4 py-3"><span className="flex items-center gap-2 text-xs font-semibold text-care-deep"><span className="size-2 rounded-full bg-care-amber" /> EXAMPLE REQUEST</span><Badge variant="outline" className="border-care-line bg-background text-[10px]">Not submitted</Badge></div><div className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="font-display text-xl font-semibold">Friday, November 13</p><p className="mt-1 text-sm text-muted-foreground">11:30 AM · Family medicine</p></div><span className="grid size-11 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-5" /></span></div><div className="mt-5 space-y-3 border-t border-care-line pt-4 text-sm"><p className="flex items-center gap-2"><Stethoscope className="size-4 text-care-teal" />Doctor assigned on clinic record</p><p className="flex items-center gap-2"><MapPin className="size-4 text-care-teal" />Clinic location · sample only</p></div><div className="mt-5 border-t border-care-line pt-4"><Button onClick={() => go("doctors")} variant="outline" size="sm" className="gap-2"><Plus className="size-3.5" /> Explore clinic directory</Button><p className="mt-3 text-[11px] text-muted-foreground">Appointment passes are unavailable until the clinic connection is configured.</p></div></div></article> : <div className="max-w-2xl rounded-md border border-care-line bg-background px-4 py-3"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-md bg-muted text-muted-foreground"><FileHeart className="size-[18px]" /></span><div><p className="text-sm font-semibold">Annual wellness visit</p><p className="mt-1 text-xs text-muted-foreground">Sample history · Tuesday, September 8</p></div><span className="ml-auto text-xs text-muted-foreground">Example only</span></div></div>}
+              <section className="flex flex-wrap items-center justify-between gap-3 border-b border-care-line pb-4"><p className="text-sm text-muted-foreground">Sample appointments · no booking information is stored.</p><div className="grid w-full grid-cols-2 gap-1 rounded-md bg-muted p-1 sm:flex sm:w-auto"><Button size="sm" variant={appointmentTab === "upcoming" ? "default" : "ghost"} onClick={() => setAppointmentTab("upcoming")} className="h-8 px-3 text-xs">Upcoming</Button><Button size="sm" variant={appointmentTab === "past" ? "default" : "ghost"} onClick={() => setAppointmentTab("past")} className="h-8 px-3 text-xs">Past visits</Button></div></section>
+              {record.status === "linked" ? <LiveAppointments record={record} tab={appointmentTab} /> : appointmentTab === "upcoming" ? <article className="max-w-2xl overflow-hidden rounded-md border border-care-line bg-background"><div className="flex items-center justify-between gap-2 border-b border-care-line bg-care-panel/60 px-4 py-3"><span className="flex items-center gap-2 text-xs font-semibold text-care-deep"><span className="size-2 rounded-full bg-care-amber" /> EXAMPLE REQUEST</span><Badge variant="outline" className="border-care-line bg-background text-[10px]">Not submitted</Badge></div><div className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="font-display text-xl font-semibold">Friday, November 13</p><p className="mt-1 text-sm text-muted-foreground">11:30 AM · Family medicine</p></div><span className="grid size-11 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-5" /></span></div><div className="mt-5 space-y-3 border-t border-care-line pt-4 text-sm"><p className="flex items-center gap-2"><Stethoscope className="size-4 text-care-teal" />Doctor assigned on clinic record</p><p className="flex items-center gap-2"><MapPin className="size-4 text-care-teal" />Clinic location · sample only</p></div><div className="mt-5 border-t border-care-line pt-4"><Button onClick={() => go("doctors")} variant="outline" size="sm" className="gap-2"><Plus className="size-3.5" /> Explore clinic directory</Button><p className="mt-3 text-[11px] text-muted-foreground">Appointment passes are unavailable until the clinic connection is configured.</p></div></div></article> : <div className="max-w-2xl rounded-md border border-care-line bg-background px-4 py-3"><div className="flex flex-wrap items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground"><FileHeart className="size-[18px]" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Annual wellness visit</p><p className="mt-1 text-xs text-muted-foreground">Sample history · Tuesday, September 8</p></div><span className="text-xs text-muted-foreground sm:ml-auto">Example only</span></div></div>}
             </div>}
 
             {activeView === "assistant" && <div className="max-w-2xl">
               <section className="overflow-hidden rounded-md border border-care-line bg-background">
-                <div className="flex items-start gap-4 border-b border-care-line bg-care-panel/60 p-5 sm:p-7"><span className="grid size-11 shrink-0 place-items-center rounded-md bg-background text-care-teal"><MessageCircleHeart className="size-5" /></span><div><Badge variant="outline" className="mb-2 border-care-line bg-background text-[9px] text-muted-foreground">SCREENING NOT AVAILABLE</Badge><h2 className="font-display text-lg font-semibold">Your wellbeing deserves safe guidance.</h2><p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">The CarePulse screening and voice assistant are paused until the clinic’s approved safety guide is connected. This preview does not assess symptoms or provide medical advice.</p></div></div>
+                <div className="flex flex-col items-start gap-4 border-b border-care-line bg-care-panel/60 p-5 min-[420px]:flex-row sm:p-7"><span className="grid size-11 shrink-0 place-items-center rounded-md bg-background text-care-teal"><MessageCircleHeart className="size-5" /></span><div><Badge variant="outline" className="mb-2 border-care-line bg-background text-[10px] text-muted-foreground">SCREENING NOT AVAILABLE</Badge><h2 className="font-display text-lg font-semibold">Your wellbeing deserves safe guidance.</h2><p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">The CarePulse screening and voice assistant are paused until the clinic’s approved safety guide is connected. This preview does not assess symptoms or provide medical advice.</p></div></div>
                 <div className="space-y-4 p-5 sm:p-7"><div className="grid gap-3 sm:grid-cols-2"><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-4 text-care-teal" /> Clinic-approved guidance</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Unavailable until safety rules are set.</p></div><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><AudioLines className="size-4 text-care-teal" /> Voice conversations</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Not enabled in this sample preview.</p></div></div><div className="rounded-md border border-care-line bg-muted/50 p-4"><p className="text-xs font-semibold">Need medical help now?</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Contact your clinic or local emergency service directly. This app cannot assess urgent symptoms.</p></div></div>
               </section>
             </div>}
 
-            {activeView === "notifications" && <div className="max-w-2xl"><p className="mb-5 text-sm text-muted-foreground">Sample updates only · no messages from a live clinic.</p><div className="divide-y divide-care-line rounded-md border border-care-line bg-background px-4"><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-care-panel text-care-teal"><CalendarDays className="size-4" /></span><div><p className="text-sm font-semibold">Your appointment is confirmed <Badge variant="outline" className="ml-1 border-care-line text-[9px] text-muted-foreground">SAMPLE</Badge></p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Sample update for Friday, November 13 at 11:30 AM.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · 2 days ago</p></div></article><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-primary"><BadgeCheck className="size-4" /></span><div><p className="text-sm font-semibold">Welcome to CarePulse</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Explore the app in sample mode while the clinic connection is being prepared.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · Last week</p></div></article></div></div>}
+            {activeView === "notifications" && <div className="max-w-2xl"><p className="mb-5 text-sm text-muted-foreground">Sample updates only · no messages from a live clinic.</p><div className="divide-y divide-care-line rounded-md border border-care-line bg-background px-4"><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-care-panel text-care-teal"><CalendarDays className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">Your appointment is confirmed <Badge variant="outline" className="ml-1 border-care-line text-[10px] text-muted-foreground">SAMPLE</Badge></p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Sample update for Friday, November 13 at 11:30 AM.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · 2 days ago</p></div></article><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-primary"><BadgeCheck className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">Welcome to CarePulse</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Explore the app in sample mode while the clinic connection is being prepared.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · Last week</p></div></article></div></div>}
 
             {activeView === "account" && <AccountScreen accountView={accountView} onSetView={setAccountView} session={session} record={record} refreshRecord={refreshRecord} onAccountLinked={() => setDirectoryRefreshToken((token) => token + 1)} />}
           </main>
 
-          <footer className="hidden border-t border-care-line px-8 py-4 text-center text-[10px] text-muted-foreground md:block">CarePulse · Sample preview · Not for clinical use</footer>
+          <footer className="border-t border-care-line px-4 py-4 text-center text-[11px] text-muted-foreground md:px-8 md:text-[10px]">CarePulse · Sample preview · Not for clinical use</footer>
         </div>
       </div>
 
-      <nav aria-label="Bottom navigation" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-care-line bg-background/95 px-1 pb-[env(safe-area-inset-bottom)] pt-2 backdrop-blur md:hidden">
-        {navigation.filter((item) => item.id !== "notifications").map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" onClick={() => go(id)} aria-current={activeView === id ? "page" : undefined} className={`flex h-[58px] flex-col gap-1 rounded-none px-0 text-[10px] ${activeView === id ? "text-care-teal" : "text-muted-foreground"}`}><Icon className="size-[18px]" /><span>{id === "appointments" ? "Visits" : id === "assistant" ? "Care" : id === "doctors" ? "Doctors" : "Home"}</span></Button>)}
-        <Button variant="ghost" onClick={() => go("notifications")} aria-current={activeView === "notifications" ? "page" : undefined} className={`relative flex h-[58px] flex-col gap-1 rounded-none px-0 text-[10px] ${activeView === "notifications" ? "text-care-teal" : "text-muted-foreground"}`}><Bell className="size-[18px]" /><span>Inbox</span><span className="absolute right-[calc(50%-15px)] top-2 size-1.5 rounded-full bg-care-teal" /></Button>
+      <nav aria-label="Bottom navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-care-line bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-xl grid-cols-5 px-1 pt-1">
+          {navigation.filter((item) => item.id !== "notifications").map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" onClick={() => go(id)} aria-current={activeView === id ? "page" : undefined} className={`relative flex h-[62px] min-w-0 touch:h-[62px] flex-col gap-1 rounded-md px-0 text-[11px] hover:bg-care-mist/60 ${activeView === id ? "text-care-teal" : "text-muted-foreground"}`}>{activeView === id && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-care-teal" />}<Icon className="size-5" /><span className="truncate">{id === "appointments" ? "Visits" : id === "assistant" ? "Care" : id === "doctors" ? "Doctors" : "Home"}</span></Button>)}
+          <Button variant="ghost" onClick={() => go("notifications")} aria-current={activeView === "notifications" ? "page" : undefined} className={`relative flex h-[62px] min-w-0 touch:h-[62px] flex-col gap-1 rounded-md px-0 text-[11px] hover:bg-care-mist/60 ${activeView === "notifications" ? "text-care-teal" : "text-muted-foreground"}`}>{activeView === "notifications" && <span className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-care-teal" />}<Bell className="size-5" /><span className="truncate">Inbox</span><span className="absolute right-[calc(50%-15px)] top-2.5 size-1.5 rounded-full bg-care-teal" /></Button>
+        </div>
       </nav>
     </div>
   );
@@ -323,7 +352,7 @@ function LiveAppointments({ record, tab }: { record: Extract<PatientRecordState,
   const today = new Date().toISOString().slice(0, 10);
   const list = record.appointments.filter((a) => (tab === "upcoming" ? a.appointment_date >= today : a.appointment_date < today));
   if (list.length === 0) return <div className="max-w-2xl rounded-md border border-care-line bg-background px-4 py-6 text-sm text-muted-foreground">No {tab === "upcoming" ? "upcoming" : "past"} appointments on your clinic record.</div>;
-  return <div className="max-w-2xl space-y-3">{list.map((a) => <div key={a.id} className="rounded-md border border-care-line bg-background px-4 py-3"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-[18px]" /></span><div className="min-w-0"><p className="text-sm font-semibold">{new Date(`${a.appointment_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · {a.appointment_time.slice(0, 5)}</p><p className="mt-1 truncate text-xs text-muted-foreground">{a.doctor?.full_name ?? "Doctor to be assigned"}{a.reason ? ` · ${a.reason}` : ""}</p></div><Badge variant="outline" className="ml-auto border-care-line text-[10px] capitalize">{a.status ?? "pending"}</Badge></div></div>)}</div>;
+  return <div className="max-w-2xl space-y-3">{list.map((a) => <div key={a.id} className="rounded-md border border-care-line bg-background px-4 py-3"><div className="flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-[18px]" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{new Date(`${a.appointment_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })} · {a.appointment_time.slice(0, 5)}</p><p className="mt-1 truncate text-xs text-muted-foreground">{a.doctor?.full_name ?? "Doctor to be assigned"}{a.reason ? ` · ${a.reason}` : ""}</p></div><Badge variant="outline" className="shrink-0 border-care-line text-[10px] capitalize">{a.status ?? "pending"}</Badge></div></div>)}</div>;
 }
 
 function AccountScreen({ accountView, onSetView, session, record, refreshRecord, onAccountLinked }: { accountView: AccountView; onSetView: (view: AccountView) => void; session: Session | null; record: PatientRecordState; refreshRecord: () => void; onAccountLinked: () => void }) {
@@ -369,12 +398,12 @@ function AccountScreen({ accountView, onSetView, session, record, refreshRecord,
       <section className="mx-auto max-w-md py-4 md:py-10">
         <Badge variant="outline" className="mb-3 gap-1.5 border-care-line bg-background text-[10px] font-medium text-muted-foreground"><ShieldCheck className="size-3" /> SIGNED IN</Badge>
         <h2 className="font-display text-[26px] font-semibold tracking-tight">Your patient profile</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{session.user.email}</p>
+        <p className="mt-2 break-all text-sm text-muted-foreground">{session.user.email}</p>
         <div className="mt-6 rounded-md border border-care-line bg-background p-4 text-sm">
           {record.status === "loading" && <p className="text-muted-foreground">Looking up your clinic record…</p>}
           {record.status === "unlinked" && <div className="space-y-3"><p className="text-muted-foreground">Your account isn’t linked to a clinic patient record yet. Link the record matching your verified email address.</p><Button onClick={() => void linkClinicRecord()} disabled={busy} className="w-full">{busy ? "Checking clinic record…" : "Link my clinic record"}</Button></div>}
           {record.status === "blocked" && <p className="text-muted-foreground">{record.message}</p>}
-          {record.status === "linked" && <dl className="space-y-2">{([["Name", record.patient.full_name], ["Date of birth", record.patient.date_of_birth], ["Phone", record.patient.phone], ["Email", record.patient.email], ["Address", record.patient.address], ["Emergency contact", [record.patient.emergency_contact_name, record.patient.emergency_contact_phone].filter(Boolean).join(" · ")]] as const).map(([k, v]) => <div key={k} className="flex justify-between gap-4"><dt className="text-muted-foreground">{k}</dt><dd className="text-right font-medium">{v || "—"}</dd></div>)}</dl>}
+          {record.status === "linked" && <dl className="space-y-3 sm:space-y-2">{([["Name", record.patient.full_name], ["Date of birth", record.patient.date_of_birth], ["Phone", record.patient.phone], ["Email", record.patient.email], ["Address", record.patient.address], ["Emergency contact", [record.patient.emergency_contact_name, record.patient.emergency_contact_phone].filter(Boolean).join(" · ")]] as const).map(([k, v]) => <div key={k} className="grid gap-0.5 min-[400px]:grid-cols-[auto_minmax(0,1fr)] min-[400px]:gap-4"><dt className="text-muted-foreground">{k}</dt><dd className="break-words font-medium min-[400px]:text-right">{v || "—"}</dd></div>)}</dl>}
         </div>
         {notice && <p role="status" className={`mt-3 rounded-md border p-3 text-xs ${notice.tone === "error" ? "border-destructive/40 text-destructive" : "border-care-line bg-care-panel/60 text-care-deep"}`}>{notice.text}</p>}
         <Button variant="outline" className="mt-5 w-full" onClick={() => void supabase.auth.signOut()}>Sign out</Button>
@@ -407,7 +436,7 @@ function AccountScreen({ accountView, onSetView, session, record, refreshRecord,
         {!isForgot && <label className="block text-xs font-medium">Password<Input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" className="mt-1.5 bg-background" /></label>}
         {notice && <p role="status" className={`rounded-md border p-3 text-xs ${notice.tone === "error" ? "border-destructive/40 text-destructive" : "border-care-line bg-care-panel/60 text-care-deep"}`}>{notice.text}</p>}
         <Button type="submit" disabled={busy} className="w-full">{isRegister ? "Create patient account" : isForgot ? "Send reset link" : "Sign in"} <ArrowRight className="size-4" /></Button>
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">{!isForgot && <Button type="button" variant="link" onClick={() => onSetView(isRegister ? "login" : "register")} className="h-auto p-0 text-xs text-care-teal">{isRegister ? "Already registered? Sign in" : "Create an account"}</Button>}{!isRegister && <Button type="button" variant="link" onClick={() => onSetView(isForgot ? "login" : "forgot")} className="h-auto p-0 text-xs text-care-teal">{isForgot ? "Return to sign in" : "Forgot password?"}</Button>}</div>
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground">{!isForgot && <Button type="button" variant="link" onClick={() => onSetView(isRegister ? "login" : "register")} className="h-auto p-0 text-xs text-care-teal">{isRegister ? "Already registered? Sign in" : "Create an account"}</Button>}{!isRegister && <Button type="button" variant="link" onClick={() => onSetView(isForgot ? "login" : "forgot")} className="h-auto p-0 text-xs text-care-teal">{isForgot ? "Return to sign in" : "Forgot password?"}</Button>}</div>
       </form>
     </section>
   );

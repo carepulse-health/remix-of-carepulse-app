@@ -5,3 +5,4 @@
 - [x] Replace patient-facing demo clinicians with protected clinic-directory reads and connect account linking to the approved database function.
 - [x] Verify directory access states and account-link RPC wiring with focused tests; confirm live directory row availability.
 - [ ] Reconnect this remix to the existing clinic database (user action in project settings), then verify sign-in, patient record linking, and doctor directory end-to-end.
+- [x] Make every patient screen fit phones, tablets and desktops: proper mobile navigation, no sideways scrolling, larger tap targets; test several screen sizes.

@@ -30,7 +30,7 @@ function ResetPassword() {
     void navigate({ to: "/", replace: true });
   };
   return (
-    <main className="mx-auto max-w-md px-4 py-16">
+    <main className="mx-auto w-full max-w-md px-4 py-10 sm:py-16">
       <h1 className="font-display text-[26px] font-semibold tracking-tight">Choose a new password</h1>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <Input required minLength={8} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="New password" />

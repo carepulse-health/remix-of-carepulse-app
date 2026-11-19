@@ -11,6 +11,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Phones, tablets and touch screens get larger tap targets. */
+@custom-variant touch {
+  @media (max-width: 1023.98px), (pointer: coarse) {
+    @slot;
+  }
+}
+
 /*
  * Design system definition.
  *
