@@ -70,7 +70,7 @@ function SectionTitle({ title, detail, action }: { title: string; detail?: strin
 function SampleLabel({ liveDirectory }: { liveDirectory: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-care-line bg-background px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-      <span className={`size-1.5 rounded-full ${liveDirectory ? "bg-care-teal" : "bg-care-amber"}`} /> {liveDirectory ? "CLINIC DIRECTORY" : "SAMPLE PREVIEW"}
+      <span className={`size-1.5 rounded-full ${liveDirectory ? "bg-care-teal" : "bg-care-amber"}`} /> {liveDirectory ? "CLINIC RECORD" : "NOT SIGNED IN"}
     </span>
   );
 }
@@ -166,7 +166,7 @@ export function CarePulsePatientApp() {
       {bannerOpen && (
         <div className="relative flex min-h-8 items-center justify-center gap-2 bg-care-deep py-1.5 pl-4 pr-12 text-center text-[11px] font-medium text-primary-foreground sm:px-12">
           <span className="size-1.5 shrink-0 rounded-full bg-care-amber" />
-          Preview content is sample-only · Sign in to view your clinic directory
+          {record.status === "linked" ? `Connected to ${record.clinic?.name ?? "your clinic"}` : "Sign in and link your clinic record to see your own information"}
           <Button variant="ghost" size="icon" aria-label="Dismiss preview notice" onClick={() => setBannerOpen(false)} className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2 text-primary-foreground touch:size-10 hover:bg-primary-foreground/10 hover:text-primary-foreground">
             <X className="size-3" />
           </Button>
@@ -206,7 +206,7 @@ export function CarePulsePatientApp() {
               <span className="hidden text-sm text-muted-foreground md:block">Patient care</span>
             </div>
             <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
-              <span className="hidden sm:inline-flex"><SampleLabel liveDirectory={activeView === "doctors" && directory.status === "ready"} /></span>
+              <span className="hidden sm:inline-flex"><SampleLabel liveDirectory={record.status === "linked"} /></span>
               <Button variant="ghost" size="icon" aria-label="View notifications" onClick={() => go("notifications")} className="relative"><Bell className="size-[18px]" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-care-teal ring-2 ring-background" /></Button>
               <Button variant="ghost" onClick={() => go("account")} aria-label="Patient account" className="size-9 rounded-md p-0 touch:size-11"><Avatar className="size-8 rounded-md bg-care-panel"><AvatarFallback className="rounded-md bg-care-panel text-xs font-semibold text-care-deep">PA</AvatarFallback></Avatar></Button>
             </div>
@@ -235,7 +235,7 @@ export function CarePulsePatientApp() {
           <main className="mx-auto w-full max-w-[1140px] px-4 pb-10 pt-6 sm:px-7 md:pb-12 md:pt-9 lg:px-10">
             {current && <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0"><p className="text-[10px] font-semibold text-care-teal">{current.eyebrow}</p><h1 className="mt-1 break-words font-display text-[26px] font-semibold leading-tight tracking-tight text-care-ink sm:text-[32px]">{current.title}</h1></div>
-              <Badge variant="outline" className="gap-1.5 border-care-line bg-background text-[10px] font-medium text-muted-foreground"><span className={`size-1.5 rounded-full ${activeView === "doctors" ? "bg-care-teal" : "bg-care-amber"}`} /> {activeView === "doctors" ? "CLINIC DIRECTORY" : "DEMO DATA"}</Badge>
+              <Badge variant="outline" className="gap-1.5 border-care-line bg-background text-[10px] font-medium text-muted-foreground"><span className={`size-1.5 rounded-full ${record.status === "linked" ? "bg-care-teal" : "bg-care-amber"}`} /> {record.status === "linked" ? "CLINIC RECORD" : "NOT SIGNED IN"}</Badge>
             </div>}
 
             {activeView === "home" && <div className="space-y-7">
@@ -248,25 +248,14 @@ export function CarePulsePatientApp() {
                   <p className="mt-2 max-w-[335px] text-sm leading-relaxed text-primary-foreground/80">Find a doctor, keep visits together, and take your next step at your own pace.</p>
                   <Button onClick={bookFirstListedDoctor} className="mt-5 gap-2 bg-primary-foreground text-care-deep hover:bg-primary-foreground/90">Find a doctor <ArrowRight className="size-4" /></Button>
                 </div>
-                <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-primary-foreground/30 bg-care-deep/60 px-2.5 py-1 text-[10px] font-medium text-primary-foreground"><span className="size-1.5 rounded-full bg-care-amber" /> SAMPLE APPOINTMENT</div>
+                
               </section>
 
               <div className="grid gap-7 xl:grid-cols-[1.4fr_0.95fr]">
                 <div className="space-y-7">
                   <section>
-                    <SectionTitle title="Your upcoming visit" detail="A sample appointment for preview only." action={<Button variant="link" onClick={() => go("appointments")} className="h-8 gap-1 p-0 text-xs text-care-teal">All appointments <ArrowRight className="size-3.5" /></Button>} />
-                    <article className="overflow-hidden rounded-md border border-care-line bg-background">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-care-line bg-care-panel/70 px-4 py-2.5">
-                        <span className="flex items-center gap-2 text-xs font-semibold text-care-deep"><span className="size-2 rounded-full bg-care-amber" /> SAMPLE PREVIEW</span><span className="text-xs text-muted-foreground">Request not submitted</span>
-                      </div>
-                      <div className="grid gap-5 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
-                        <div className="flex items-start gap-3">
-                          <div className="grid size-11 shrink-0 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-[21px]" /></div>
-                          <div><p className="text-sm font-semibold text-care-ink">Friday, November 13</p><p className="mt-1 text-xs text-muted-foreground">11:30 AM · Family medicine</p><p className="mt-2 text-xs text-care-ink">Doctor assigned on clinic record</p></div>
-                        </div>
-                        <Button onClick={() => go("appointments")} variant="outline" size="sm" className="gap-2 sm:self-center">View appointment <ArrowRight className="size-3.5" /></Button>
-                      </div>
-                    </article>
+                    <SectionTitle title="Your upcoming visit" action={<Button variant="link" onClick={() => go("appointments")} className="h-8 gap-1 p-0 text-xs text-care-teal">All appointments <ArrowRight className="size-3.5" /></Button>} />
+                    <UpcomingVisit record={record} onOpen={() => go("appointments")} onAccount={() => go("account")} />
                   </section>
 
                   <section>
@@ -296,10 +285,9 @@ export function CarePulsePatientApp() {
                     </button>
                   </section>
                   <section className="border-t border-care-line pt-5">
-                    <div className="mb-3 flex items-center gap-2"><Clock3 className="size-4 text-care-teal" /><h2 className="text-sm font-semibold">Clinic hours</h2><Badge variant="outline" className="ml-auto border-care-line text-[10px] text-muted-foreground">SAMPLE</Badge></div>
-                    <p className="text-xs text-muted-foreground">Monday – Friday <span className="float-right font-medium text-care-ink">8:00 AM – 5:00 PM</span></p>
-                    <p className="mt-2 text-xs text-muted-foreground">Saturday <span className="float-right font-medium text-care-ink">9:00 AM – 1:00 PM</span></p>
-                  </section>
+                    <div className="mb-3 flex items-center gap-2"><Clock3 className="size-4 text-care-teal" /><h2 className="text-sm font-semibold">Clinic hours</h2></div>
+                    <ClinicHours record={record} />
+                </section>
                 </div>
               </div>
             </div>}
@@ -318,23 +306,24 @@ export function CarePulsePatientApp() {
             </div>}
 
             {activeView === "appointments" && <div className="space-y-5">
-              <section className="flex flex-wrap items-center justify-between gap-3 border-b border-care-line pb-4"><p className="text-sm text-muted-foreground">Sample appointments · no booking information is stored.</p><div className="grid w-full grid-cols-2 gap-1 rounded-md bg-muted p-1 sm:flex sm:w-auto"><Button size="sm" variant={appointmentTab === "upcoming" ? "default" : "ghost"} onClick={() => setAppointmentTab("upcoming")} className="h-8 px-3 text-xs">Upcoming</Button><Button size="sm" variant={appointmentTab === "past" ? "default" : "ghost"} onClick={() => setAppointmentTab("past")} className="h-8 px-3 text-xs">Past visits</Button></div></section>
-              {record.status === "linked" ? <LiveAppointments record={record} tab={appointmentTab} /> : appointmentTab === "upcoming" ? <article className="max-w-2xl overflow-hidden rounded-md border border-care-line bg-background"><div className="flex items-center justify-between gap-2 border-b border-care-line bg-care-panel/60 px-4 py-3"><span className="flex items-center gap-2 text-xs font-semibold text-care-deep"><span className="size-2 rounded-full bg-care-amber" /> EXAMPLE REQUEST</span><Badge variant="outline" className="border-care-line bg-background text-[10px]">Not submitted</Badge></div><div className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="font-display text-xl font-semibold">Friday, November 13</p><p className="mt-1 text-sm text-muted-foreground">11:30 AM · Family medicine</p></div><span className="grid size-11 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-5" /></span></div><div className="mt-5 space-y-3 border-t border-care-line pt-4 text-sm"><p className="flex items-center gap-2"><Stethoscope className="size-4 text-care-teal" />Doctor assigned on clinic record</p><p className="flex items-center gap-2"><MapPin className="size-4 text-care-teal" />Clinic location · sample only</p></div><div className="mt-5 border-t border-care-line pt-4"><Button onClick={() => go("doctors")} variant="outline" size="sm" className="gap-2"><Plus className="size-3.5" /> Explore clinic directory</Button><p className="mt-3 text-[11px] text-muted-foreground">Appointment passes are unavailable until the clinic connection is configured.</p></div></div></article> : <div className="max-w-2xl rounded-md border border-care-line bg-background px-4 py-3"><div className="flex flex-wrap items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground"><FileHeart className="size-[18px]" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">Annual wellness visit</p><p className="mt-1 text-xs text-muted-foreground">Sample history · Tuesday, September 8</p></div><span className="text-xs text-muted-foreground sm:ml-auto">Example only</span></div></div>}
+              <section className="flex flex-wrap items-center justify-between gap-3 border-b border-care-line pb-4"><p className="text-sm text-muted-foreground">{record.status === "linked" ? "Visits on your clinic record." : "Sign in to see visits on your clinic record."}</p><div className="grid w-full grid-cols-2 gap-1 rounded-md bg-muted p-1 sm:flex sm:w-auto"><Button size="sm" variant={appointmentTab === "upcoming" ? "default" : "ghost"} onClick={() => setAppointmentTab("upcoming")} className="h-8 px-3 text-xs">Upcoming</Button><Button size="sm" variant={appointmentTab === "past" ? "default" : "ghost"} onClick={() => setAppointmentTab("past")} className="h-8 px-3 text-xs">Past visits</Button></div></section>
+              {record.status === "linked" ? <LiveAppointments record={record} tab={appointmentTab} /> : <RecordGate record={record} onAccount={() => go("account")} />}
             </div>}
 
             {activeView === "assistant" && <div className="max-w-2xl">
               <section className="overflow-hidden rounded-md border border-care-line bg-background">
                 <div className="flex flex-col items-start gap-4 border-b border-care-line bg-care-panel/60 p-5 min-[420px]:flex-row sm:p-7"><span className="grid size-11 shrink-0 place-items-center rounded-md bg-background text-care-teal"><MessageCircleHeart className="size-5" /></span><div><Badge variant="outline" className="mb-2 border-care-line bg-background text-[10px] text-muted-foreground">SCREENING NOT AVAILABLE</Badge><h2 className="font-display text-lg font-semibold">Your wellbeing deserves safe guidance.</h2><p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">The CarePulse screening and voice assistant are paused until the clinic’s approved safety guide is connected. This preview does not assess symptoms or provide medical advice.</p></div></div>
-                <div className="space-y-4 p-5 sm:p-7"><div className="grid gap-3 sm:grid-cols-2"><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-4 text-care-teal" /> Clinic-approved guidance</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Unavailable until safety rules are set.</p></div><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><AudioLines className="size-4 text-care-teal" /> Voice conversations</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Not enabled in this sample preview.</p></div></div><div className="rounded-md border border-care-line bg-muted/50 p-4"><p className="text-xs font-semibold">Need medical help now?</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Contact your clinic or local emergency service directly. This app cannot assess urgent symptoms.</p></div></div>
+                <div className="space-y-4 p-5 sm:p-7"><div className="grid gap-3 sm:grid-cols-2"><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><ShieldCheck className="size-4 text-care-teal" /> Clinic-approved guidance</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Unavailable until safety rules are set.</p></div><div className="border-l-2 border-care-teal pl-3"><span className="flex items-center gap-2 text-sm font-medium"><AudioLines className="size-4 text-care-teal" /> Voice conversations</span><p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">Not enabled yet.</p></div></div><div className="rounded-md border border-care-line bg-muted/50 p-4"><p className="text-xs font-semibold">Need medical help now?</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Contact your clinic or local emergency service directly. This app cannot assess urgent symptoms.</p></div></div>
               </section>
+              <ScreeningHistory record={record} />
             </div>}
 
-            {activeView === "notifications" && <div className="max-w-2xl"><p className="mb-5 text-sm text-muted-foreground">Sample updates only · no messages from a live clinic.</p><div className="divide-y divide-care-line rounded-md border border-care-line bg-background px-4"><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-care-panel text-care-teal"><CalendarDays className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">Your appointment is confirmed <Badge variant="outline" className="ml-1 border-care-line text-[10px] text-muted-foreground">SAMPLE</Badge></p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Sample update for Friday, November 13 at 11:30 AM.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · 2 days ago</p></div></article><article className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-primary"><BadgeCheck className="size-4" /></span><div className="min-w-0"><p className="text-sm font-semibold">Welcome to CarePulse</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Explore the app in sample mode while the clinic connection is being prepared.</p><p className="mt-2 text-[10px] text-muted-foreground">Example · Last week</p></div></article></div></div>}
+            {activeView === "notifications" && <div className="max-w-2xl">{record.status === "linked" ? <LiveNotifications items={record.notifications} /> : <RecordGate record={record} onAccount={() => go("account")} />}</div>}
 
             {activeView === "account" && <AccountScreen accountView={accountView} onSetView={setAccountView} session={session} record={record} refreshRecord={refreshRecord} onAccountLinked={() => setDirectoryRefreshToken((token) => token + 1)} />}
           </main>
 
-          <footer className="border-t border-care-line px-4 py-4 text-center text-[11px] text-muted-foreground md:px-8 md:text-[10px]">CarePulse · Sample preview · Not for clinical use</footer>
+          <footer className="border-t border-care-line px-4 py-4 text-center text-[11px] text-muted-foreground md:px-8 md:text-[10px]">CarePulse · Not for emergencies · Contact your clinic for urgent care</footer>
         </div>
       </div>
 
@@ -440,4 +429,47 @@ function AccountScreen({ accountView, onSetView, session, record, refreshRecord,
       </form>
     </section>
   );
+}
+
+function RecordGate({ record, onAccount }: { record: PatientRecordState; onAccount: () => void }) {
+  const text = record.status === "loading" ? "Loading your clinic record…"
+    : record.status === "blocked" ? record.message
+    : record.status === "unlinked" ? "Link your clinic record to see this information."
+    : "Sign in to see this information.";
+  return <div className="max-w-2xl rounded-md border border-care-line bg-background px-4 py-6 text-sm text-muted-foreground"><p>{text}</p>{(record.status === "signed-out" || record.status === "unlinked") && <Button variant="link" onClick={onAccount} className="mt-2 h-auto p-0 text-xs text-care-teal">{record.status === "unlinked" ? "Link record" : "Sign in"}</Button>}</div>;
+}
+
+function UpcomingVisit({ record, onOpen, onAccount }: { record: PatientRecordState; onOpen: () => void; onAccount: () => void }) {
+  if (record.status !== "linked") return <RecordGate record={record} onAccount={onAccount} />;
+  const today = new Date().toISOString().slice(0, 10);
+  const next = [...record.appointments].filter((a) => a.appointment_date >= today && a.status !== "cancelled").sort((a, b) => `${a.appointment_date}${a.appointment_time}`.localeCompare(`${b.appointment_date}${b.appointment_time}`))[0];
+  if (!next) return <div className="rounded-md border border-care-line bg-background px-4 py-6 text-sm text-muted-foreground">No upcoming visits on your clinic record.</div>;
+  const pass = record.passes.find((p) => p.appointment_id === next.id);
+  return (
+    <article className="overflow-hidden rounded-md border border-care-line bg-background">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-care-line bg-care-panel/70 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-semibold capitalize text-care-deep"><span className="size-2 rounded-full bg-care-teal" /> {next.status ?? "pending"}</span>{pass && <span className="text-xs text-muted-foreground">Ref {pass.reference_code}</span>}</div>
+      <div className="grid gap-5 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
+        <div className="flex items-start gap-3"><div className="grid size-11 shrink-0 place-items-center rounded-md bg-care-mist text-care-teal"><CalendarDays className="size-[21px]" /></div><div className="min-w-0"><p className="text-sm font-semibold text-care-ink">{new Date(`${next.appointment_date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p><p className="mt-1 text-xs text-muted-foreground">{next.appointment_time.slice(0, 5)}{next.reason ? ` · ${next.reason}` : ""}</p><p className="mt-2 break-words text-xs text-care-ink">{next.doctor?.full_name ?? "Doctor to be assigned"}</p></div></div>
+        <Button onClick={onOpen} variant="outline" size="sm" className="gap-2 sm:self-center">View appointment <ArrowRight className="size-3.5" /></Button>
+      </div>
+    </article>
+  );
+}
+
+function ClinicHours({ record }: { record: PatientRecordState }) {
+  if (record.status !== "linked") return <p className="text-xs text-muted-foreground">Sign in to see your clinic’s hours.</p>;
+  const hours = record.clinic?.opening_hours;
+  const entries = hours && typeof hours === "object" && !Array.isArray(hours) ? Object.entries(hours).filter(([, v]) => typeof v === "string") as [string, string][] : [];
+  if (!entries.length) return <p className="text-xs text-muted-foreground">{record.clinic?.name ?? "Your clinic"} hasn’t listed opening hours yet.{record.clinic?.phone ? ` Call ${record.clinic.phone}.` : ""}</p>;
+  return <>{entries.map(([day, time]) => <p key={day} className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground first:mt-0"><span className="capitalize">{day}</span><span className="font-medium text-care-ink">{time}</span></p>)}</>;
+}
+
+function LiveNotifications({ items }: { items: Extract<PatientRecordState, { status: "linked" }>["notifications"] }) {
+  if (!items.length) return <div className="rounded-md border border-care-line bg-background px-4 py-6 text-sm text-muted-foreground">No messages from your clinic yet.</div>;
+  return <div className="divide-y divide-care-line rounded-md border border-care-line bg-background px-4">{items.map((n) => <article key={n.id} className="flex gap-3 py-4"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-care-panel text-care-teal"><Bell className="size-4" /></span><div className="min-w-0"><p className="break-words text-sm font-semibold">{n.title}{!n.is_read && <span className="ml-2 inline-block size-1.5 rounded-full bg-care-teal align-middle" aria-label="Unread" />}</p><p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">{n.message}</p>{n.created_at && <p className="mt-2 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString()}</p>}</div></article>)}</div>;
+}
+
+function ScreeningHistory({ record }: { record: PatientRecordState }) {
+  if (record.status !== "linked" || !record.screenings.length) return null;
+  return <section className="mt-5 rounded-md border border-care-line bg-background p-5"><h2 className="text-sm font-semibold">Your past screenings</h2><p className="mt-1 text-xs text-muted-foreground">Submitted earlier and sent to your clinic for review.</p><ul className="mt-3 divide-y divide-care-line">{record.screenings.map((t) => <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-xs"><span>{t.created_at ? new Date(t.created_at).toLocaleDateString() : "Date not recorded"}</span><Badge variant="outline" className="border-care-line text-[10px] capitalize">{t.review_status ?? "pending review"}</Badge></li>)}</ul></section>;
 }
